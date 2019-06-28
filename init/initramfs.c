@@ -615,7 +615,7 @@ static int __init skip_initramfs_param(char *str)
 __setup("skip_initramfs", skip_initramfs_param);
 
 #ifdef CONFIG_BLK_DEV_RAM
-static void populate_initrd_image(char *err)
+static void __init populate_initrd_image(char *err)
 {
 	ssize_t written;
 	struct file *file;
