@@ -745,6 +745,9 @@ asmlinkage __visible void __init start_kernel(void)
 		late_time_init();
 	sched_clock_init();
 	calibrate_delay();
+
+	arch_cpu_finalize_init();
+
 	pid_idr_init();
 	anon_vma_init();
 #ifdef CONFIG_X86
@@ -775,8 +778,6 @@ asmlinkage __visible void __init start_kernel(void)
 	if(phx_set_boot_stage)
 		phx_set_boot_stage(KERNEL_DELAYACCT_INIT_DONE);
 #endif //OPLUS_FEATURE_PHOENIX
-
-	arch_cpu_finalize_init();
 
 	acpi_subsystem_init();
 	arch_post_acpi_subsys_init();
