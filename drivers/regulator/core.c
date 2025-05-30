@@ -1708,7 +1708,9 @@ static int regulator_resolve_supply(struct regulator_dev *rdev)
 		goto out;
 	}
 
-	return 0;
+out:
+	regulator_unlock(rdev);
+	return ret;
 }
 
 /* Internal regulator request function */
