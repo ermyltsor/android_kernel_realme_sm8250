@@ -478,10 +478,11 @@ static int sla_skb_reroute(struct sk_buff *skb, struct nf_conn *ct,
 	const struct nf_hook_state *state)
 {
 	int err;
-
-	/* err = ip_route_me_harder(state->net, state->sk, skb, RTN_UNSPEC); */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 158))
+	err = ip_route_me_harder(state->net, state->sk, skb, RTN_UNSPEC); 
+#else
 	err = ip_route_me_harder(state->net, skb, RTN_UNSPEC);
-
+#endif
 	if (err < 0) {
 		return NF_DROP_ERR(err);
 	}
