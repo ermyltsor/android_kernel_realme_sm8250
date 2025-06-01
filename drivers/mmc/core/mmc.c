@@ -2548,6 +2548,8 @@ static int mmc_test_awake_ext_csd(struct mmc_host *host)
 	kfree(ext_csd);
 
 	return err;
+}
+
 static bool _mmc_cache_enabled(struct mmc_host *host)
 {
 	return host->card->ext_csd.cache_size > 0 &&
