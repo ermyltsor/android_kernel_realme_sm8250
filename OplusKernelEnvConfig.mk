@@ -130,19 +130,25 @@ OPLUS_FEATURE_MIC_VA_MIC_CLK_SWITCH\
 OPLUS_FEATURE_SIGKILL_DIAGNOSIS \
 OPLUS_FEATURE_SENSOR
 
+SHUTUP_CUSTOM=yes
+
 ifeq ($(OPLUS_FEATURE_ADFR_KERNEL), yes)
+ifneq ($(SHUTUP_CUSTOM), yes)
     $(warning add OPLUS_FEATURE_ADFR in kernel)
+endif
     ALLOWED_MCROS += OPLUS_FEATURE_ADFR
 endif
 
 ifeq ($(OPLUS_FEATURE_GAMMA_SWITCH_KERNEL), yes)
+ifneq ($(SHUTUP_CUSTOM), yes)
      $(warning add OPLUS_FEATURE_GAMMA_SWITCH_KERNEL in kernel)
+endif
      ALLOWED_MCROS += OPLUS_FEATURE_GAMMA_SWITCH
 endif
 
 
 $(foreach myfeature,$(ALLOWED_MCROS),\
-         $(warning make $(myfeature) to be a macro here) \
+         $(if $(filter yes, $(SHUTUP_CUSTOM)), , $(warning make $(myfeature) to be a macro here)) \
          $(eval KBUILD_CFLAGS += -D$(myfeature)) \
          $(eval KBUILD_CPPFLAGS += -D$(myfeature)) \
          $(eval CFLAGS_KERNEL += -D$(myfeature)) \
