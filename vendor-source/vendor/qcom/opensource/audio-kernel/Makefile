@@ -53,3 +53,4 @@ obj-y += soc/
 obj-y += dsp/
 obj-y += ipc/
 obj-y += asoc/
+obj-y += driver/
