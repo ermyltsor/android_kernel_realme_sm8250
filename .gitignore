@@ -138,3 +138,6 @@ kernel/configs/android-*.cfg
 
 # ignore build output directory
 /out/
+
+# ignore anykernel.zip
+/anykernel/*.zip
