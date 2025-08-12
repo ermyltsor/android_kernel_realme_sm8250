@@ -141,3 +141,6 @@ kernel/configs/android-*.cfg
 
 # ignore anykernel.zip
 /anykernel/*.zip
+
+# ignore clang-tools
+/clang-tools
