@@ -1,13 +1,10 @@
 #!/bin/bash
 
 #
-# Download zyc clang-10.0.1, if needed
-# download link: https://github.com/ZyCromerZ/Clang/releases/download/10.0.1-20220724-release/Clang-10.0.1-20220724.tar.gz
-#
-
 # This is my work environment, for reference only.
 # debian-stable
 # sudo apt install -y build-essential binutils-aarch64-linux-gnu bc bison flex libssl-dev libelf-dev python3 python3-distutils git wget curl ca-certificates gcc make rsync libncurses-dev gcc-aarch64-linux-gnu cpio unzip
+#
 
 # history build output
 if [ -d out ]; then
@@ -25,9 +22,7 @@ else
     echo "No history exists anykernel.zip."
 fi
 
-echo "The kernel will be built in 5 seconds."
-
-sleep 5
+################################################################################################################################
 
 # Fake username
 #export KBUILD_BUILD_USER= 
@@ -35,8 +30,26 @@ sleep 5
 # Fake Hostname
 export KBUILD_BUILD_HOST=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 12)
 
-# Custom Clang-tools
-export CLANG_PATH=$HOME/clang-10.0.1/bin
+# Custom Clang Path
+if [ -d clang-tools ]; then
+    # I'm a noob, if errors please manual operation.
+    echo "Found clang-tools folder."
+else
+    echo "Create clang-tools folder."
+    mkdir -p clang-tools
+
+    if [ -f Clang-10.0.1-20220724.tar.gz ]; then
+        echo "Clang-10.0.1-20220724.tar.gz exists."
+    else
+        # get the zyc clang from github,
+        wget -c https://github.com/ZyCromerZ/Clang/releases/download/10.0.1-20220724-release/Clang-10.0.1-20220724.tar.gz
+    fi
+
+    tar -xzf Clang-10.0.1-20220724.tar.gz -C clang-tools
+    rm -f Clang-10.0.1-20220724.tar.gz
+fi
+
+export CLANG_PATH=$PWD/clang-tools/bin
 export PATH=$CLANG_PATH:$PATH
 export CROSS_COMPILE=aarch64-linux-gnu-
 
@@ -45,6 +58,11 @@ mkdir -p out
 
 KERNEL_DEFCONFIG=vendor/kona-perf_defconfig
 ANYKERNEL_NAME=rui5.0-stock
+
+#################################################################################################################################
+
+echo "The kernel will be built in 5 seconds."
+sleep 5
 
 echo
 echo "Kernel is going to be built using $KERNEL_DEFCONFIG."
@@ -58,26 +76,32 @@ make $MAKE_FLAGS -j$(nproc)
 
 echo "Build Complete."
 
+#################################################################################################################################
+
 echo "Enter the anykernel directory after 5 seconds."
 sleep 5
 cd anykernel
 
-echo "Copy Image, dtb, dtbo.img from output to the anykernel folder."
+if [ -f ../out/arch/arm64/boot/Image ] && [ -f ../out/arch/arm64/boot/dtb ] && [ -f ../out/arch/arm64/boot/dtbo.img ]; then
+    echo "Copy Image, dtb, dtbo.img from output to the anykernel folder."
+    cp ../out/arch/arm64/boot/Image .
+    cp ../out/arch/arm64/boot/dtb .
+    cp ../out/arch/arm64/boot/dtbo.img .
+    echo "Compress everything in the anykernel folder into a zip file."
 
-cp ../out/arch/arm64/boot/Image .
-cp ../out/arch/arm64/boot/dtb .
-cp ../out/arch/arm64/boot/dtbo.img .
+    zip -qr "$ANYKERNEL_NAME.zip" *
 
-echo "Compress everything in the anykernel folder into a zip file."
-zip -qr "$ANYKERNEL_NAME.zip" *
+    echo "Return to the root directory of the kernel tree."
+    cd ..
 
-echo "Return to the root directory of the kernel tree."
-cd ..
+   sleep 2
 
-sleep 2
-echo "Delete Image, dtb, and dtbo.img from the anykernel folder"
-rm anykernel/Image
-rm anykernel/dtb
-rm anykernel/dtbo.img
+    if [ -f anykernel/Image ] && [ -f anykernel/dtb ] && [ -f anykernel/dtbo.img ]; then
+        echo "Delete Image, dtb, and dtbo.img from the anykernel folder."
+        rm anykernel/Image anykernel/dtb anykernel/dtbo.img
+    fi
 
-echo "You can find the $ANYKERNEL_NAME.zip in anykernel folder."
+    echo "You can find the $ANYKERNEL_NAME.zip in anykernel folder."
+else
+    exit 1
+fi
