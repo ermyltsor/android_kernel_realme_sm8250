@@ -7,7 +7,6 @@ vendor := $(srctree)/$(src)
 #	subdir-y += qcom
 #endif
 #else
-subdir-y += qcom
 #realme SM8250 project
 subdir-y += 19795
 subdir-y += 19795_t0_evt2
