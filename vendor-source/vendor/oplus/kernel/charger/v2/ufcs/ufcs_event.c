@@ -15,6 +15,7 @@
 #include "ufcs_event.h"
 #include "ufcs_msg.h"
 #include "ufcs_notify.h"
+#include "ufcs_intf.h"
 
 #define MSG_HEAD_SIZE		2
 #define MSG_HEAD_TYPE_MASK	0x7
@@ -153,16 +154,22 @@ int ufcs_dump_msg_info(struct ufcs_msg *msg, const char *prefix)
 
 	switch (msg->head.type) {
 	case UFCS_CTRL_MSG:
-		ufcs_info("%s %s ctrl msg\n", tmp, ufcs_get_ctrl_msg_name(msg->ctrl_msg.command));
+		if (ufcs_is_supported_ctrl_msg(&msg->ctrl_msg))
+			ufcs_info("%s %s ctrl msg\n", tmp, ufcs_get_ctrl_msg_name(msg->ctrl_msg.command));
+		else
+			ufcs_info("%s invalid(%u) ctrl msg\n", tmp, msg->ctrl_msg.command);
 		break;
 	case UFCS_DATA_MSG:
-		ufcs_info("%s %s data msg\n", tmp, ufcs_get_data_msg_name(msg->data_msg.command));
+		if (ufcs_is_supported_data_msg(&msg->data_msg))
+			ufcs_info("%s %s data msg\n", tmp, ufcs_get_data_msg_name(msg->data_msg.command));
+		else
+			ufcs_info("%s invalid(%u) data msg\n", tmp, msg->data_msg.command);
 		break;
 	case UFCS_VENDOR_MSG:
 		ufcs_info("%s vendor msg\n", tmp);
 		break;
 	default:
-		ufcs_err("%s Unknown msg, type=%u\n", tmp, msg->head.type);
+		ufcs_err("%s unknown msg, type=%u\n", tmp, msg->head.type);
 		return -EINVAL;
 	}
 
@@ -188,7 +195,7 @@ static unsigned char crc8_calculate(const unsigned char *data, unsigned char siz
 	return crc;
 }
 
-static struct ufcs_msg *ufcs_unpack_msg(struct ufcs_class *class, const u8 *buf, int len)
+struct ufcs_msg *ufcs_unpack_msg(struct ufcs_class *class, const u8 *buf, int len)
 {
 	struct ufcs_msg *msg;
 	struct ufcs_config *config;
@@ -355,7 +362,7 @@ static int ufcs_pack_msg(struct ufcs_class *class, struct ufcs_msg *msg, u8 *buf
 	return index;
 }
 
-static int __ufcs_send_msg(struct ufcs_class *class, struct ufcs_msg *msg)
+static int ufcs_write_msg(struct ufcs_class *class, struct ufcs_msg *msg)
 {
 	u8 buf[UFCS_MSG_SIZE_MAX];
 	int rc;
@@ -378,12 +385,11 @@ static int __ufcs_send_msg(struct ufcs_class *class, struct ufcs_msg *msg)
 	return 0;
 }
 
-int ufcs_send_msg(struct ufcs_class *class, struct ufcs_msg *msg)
+static int __ufcs_send_msg(struct ufcs_class *class, struct ufcs_msg *msg)
 {
 	struct ufcs_msg_sender *sender = &class->sender;
 	int rc;
 
-	mutex_lock(&sender->lock);
 	sender->msg = msg;
 	sender->msg_retry_count = 0;
 	reinit_completion(&sender->ack);
@@ -405,8 +411,74 @@ int ufcs_send_msg(struct ufcs_class *class, struct ufcs_msg *msg)
 	sender->msg_number_counter++;
 	if (sender->msg_number_counter > MSG_NUMBER_COUNT_MAX)
 		sender->msg_number_counter = 0;
-	mutex_unlock(&sender->lock);
 
+	return rc;
+}
+
+int ufcs_send_msg(struct ufcs_class *class, struct ufcs_msg *msg, bool retry)
+{
+	int rc;
+	bool soft_reset = false;
+
+	if (class == NULL) {
+		ufcs_err("class is NULL\n");
+		return -EINVAL;
+	}
+	if (msg == NULL) {
+		ufcs_err("msg is NULL\n");
+		return -EINVAL;
+	}
+
+	switch (msg->head.type) {
+	case UFCS_CTRL_MSG:
+	case UFCS_DATA_MSG:
+	case UFCS_VENDOR_MSG:
+		break;
+	default:
+		ufcs_err("not support msg type, type=%d\n", msg->head.type);
+		return -ENOTSUPP;
+	}
+
+retry:
+	mutex_lock(&class->sender.lock);
+	rc = __ufcs_send_msg(class, msg);
+	if (rc < 0) {
+		if (rc != -EAGAIN)
+			goto out;
+		if (soft_reset) {
+			rc = -EIO;
+			goto out;
+		}
+		soft_reset = true;
+		switch (msg->head.type) {
+		case UFCS_CTRL_MSG:
+			if (ufcs_is_ack_nck_msg(&msg->ctrl_msg))
+				break;
+			if (ufcs_is_soft_reset_msg(&msg->ctrl_msg))
+				break;
+			if (ufcs_is_ping_msg(&msg->ctrl_msg))
+				break;
+			fallthrough;
+		case UFCS_DATA_MSG:
+		case UFCS_VENDOR_MSG:
+			mutex_unlock(&class->sender.lock);
+			rc = ufcs_send_ctrl_msg_soft_reset(class);
+			if (rc < 0) {
+				ufcs_err("send soft reset error, rc=%d\n", rc);
+				return -EIO;
+			}
+			if (retry)
+				goto retry;
+			return -EAGAIN;
+		default:
+			ufcs_err("not support msg type, type=%d\n", msg->head.type);
+			rc = -ENOTSUPP;
+			goto out;
+		}
+	}
+
+out:
+	mutex_unlock(&class->sender.lock);
 	return rc;
 }
 
@@ -478,13 +550,11 @@ static bool ufcs_check_handshake(struct ufcs_class *class)
 	return true;
 }
 
-static bool ufcs_check_error_info(struct ufcs_class *class)
+static int ufcs_check_error_info(struct ufcs_class *class, unsigned int dev_err_flag)
 {
-	unsigned int dev_err_flag = class->ufcs->dev_err_flag;
 	struct ufcs_msg_sender *sender;
 
 	sender = &class->sender;
-	ufcs_send_state(UFCS_NOTIFY_ERR_FLAG, &class->ufcs->dev_err_flag);
 
 	if (dev_err_flag & BIT(UFCS_HW_ERR_HARD_RESET)) {
 		if (class->start_cable_detect) {
@@ -522,26 +592,25 @@ static bool ufcs_check_error_info(struct ufcs_class *class)
 			}
 			goto err;
 		}
-		if (dev_err_flag & BIT(UFCS_RECV_ERR_ACK_TIMEOUT))
+		if (dev_err_flag & BIT(UFCS_RECV_ERR_ACK_TIMEOUT)) {
 			ufcs_err("sent packet complete, but ack receive timeout\n");
-		if (dev_err_flag & BIT(UFCS_RECV_ERR_DATA_READY))
-			ufcs_err("sent packet complete = 1 && data ready = 1\n");
+		} else {
+			if (sender->status == MSG_WAIT_ACK) {
+				stop_ack_receive_timer(class);
+				sender->status = MSG_SEND_OK;
+				complete(&sender->ack);
+			}
+
+			if (dev_err_flag & BIT(UFCS_RECV_ERR_DATA_READY))
+				ufcs_err("ack interrupt read delayed! need to read msg!\n");
+			else
+				return 1;
+		}
 	} else {
 		if (!(dev_err_flag & BIT(UFCS_RECV_ERR_DATA_READY))) {
 			ufcs_err("sent packet complete = 0 && data ready = 0\n");
 			goto err;
 		}
-	}
-
-	if (sender->status == MSG_WAIT_ACK) {
-		stop_ack_receive_timer(class);
-		sender->status = MSG_SEND_OK;
-		complete(&sender->ack);
-		if ((dev_err_flag & BIT(UFCS_RECV_ERR_SENT_CMP)) &&
-		    (dev_err_flag & BIT(UFCS_RECV_ERR_DATA_READY)))
-			ufcs_err("ack interrupt read delayed! need to read msg!\n");
-		else
-			return 1;
 	}
 
 	return 0;
@@ -556,10 +625,19 @@ static void ufcs_recv_work(struct kthread_work *work)
 	struct ufcs_msg *msg;
 	u8 buf[UFCS_MSG_SIZE_MAX];
 	int rc;
+	static unsigned int dev_err_flag = 0;
+
+recv:
+	rc = ufcs_get_error_flag(ufcs, &dev_err_flag);
+	if (rc < 0) {
+		ufcs_err("can't get error flag, rc=%d\n", rc);
+		return;
+	}
 
 	if (ufcs_check_handshake(class))
 		return;
-	rc = ufcs_check_error_info(class);
+	ufcs_send_state(UFCS_NOTIFY_ERR_FLAG, &dev_err_flag);
+	rc = ufcs_check_error_info(class, dev_err_flag);
 	if (rc != 0)
 		return;
 
@@ -600,16 +678,35 @@ static void ufcs_recv_work(struct kthread_work *work)
 		 * non-ACK/NCK message to ensure that the message sending interval
 		 * meets the requirements.
 		 */
-		mutex_lock(&class->sender.lock);
-		class->sender.status = MSG_SEND_PENDIGN;
-		stop_msg_trans_delay_timer(class);
-		start_msg_trans_delay_timer(class);
-		mutex_unlock(&class->sender.lock);
+		if (!mutex_is_locked(&class->sender.lock)) {
+			/*
+			 * This operation is only needed when the sender is
+			 * idle, because the sender will do the same operation
+			 * after sending the message.
+			 */
+			mutex_lock(&class->sender.lock);
+			class->sender.status = MSG_SEND_PENDIGN;
+			stop_msg_trans_delay_timer(class);
+			start_msg_trans_delay_timer(class);
+			mutex_unlock(&class->sender.lock);
+		}
 	}
 
 	usleep_range(T_ACK_TRANSMIT_US, T_ACK_TRANSMIT_US + 1);
 	class->recv_msg = msg;
 	kthread_queue_work(class->worker, &class->event_work);
+
+	spin_lock(&class->err_flag_lock);
+	if (!kfifo_is_empty(&ufcs->err_flag_fifo)) {
+		spin_unlock(&class->err_flag_lock);
+		goto recv;
+	}
+	spin_unlock(&class->err_flag_lock);
+}
+
+static void ufcs_fifo_overflow_work(struct work_struct *work)
+{
+	ufcs_send_state(UFCS_NOTIFY_FIFO_OVERFLOW, NULL);
 }
 
 static int ufcs_process_ctrl_msg_event(struct ufcs_class *class, struct ufcs_event *event)
@@ -762,7 +859,7 @@ int ufcs_push_event(struct ufcs_class *class, struct ufcs_event *event)
 	return 0;
 }
 
-static int ufcs_process_event(struct ufcs_class *class, struct ufcs_event *event)
+int ufcs_process_event(struct ufcs_class *class, struct ufcs_event *event)
 {
 	struct ufcs_msg *msg;
 	int rc;
@@ -771,24 +868,35 @@ static int ufcs_process_event(struct ufcs_class *class, struct ufcs_event *event
 	switch (msg->head.type) {
 	case UFCS_CTRL_MSG:
 		rc = ufcs_process_ctrl_msg_event(class, event);
-		if (rc < 0)
-			return rc;
 		break;
 	case UFCS_DATA_MSG:
 		rc = ufcs_process_data_msg_event(class, event);
-		if (rc < 0)
-			return rc;
 		break;
 	case UFCS_VENDOR_MSG:
 		rc = ufcs_process_vendor_msg_event(class, event);
-		if (rc < 0)
-			return rc;
 		break;
 	default:
-		return -ENOTSUPP;
+		rc = -ENOTSUPP;
+		break;
+	}
+
+	if (rc < 0) {
+		if (rc != -ENOTSUPP)
+			return rc;
+		event->type = UFCS_EVENT_SEND_REFUSE;
 	}
 
 	return ufcs_push_event(class, event);
+}
+
+static void ufcs_handle_unsupported_msg(struct ufcs_class *class, struct ufcs_msg *msg)
+{
+	int rc;
+
+	ufcs_dump_msg_info(msg, "refuse");
+	rc = ufcs_send_data_msg_refuse(class, msg, REFUSE_NOT_SUPPORT_CMD);
+	if (rc < 0)
+		ufcs_err("send refuse msg error, rc=%d\n", rc);
 }
 
 static void ufcs_event_work(struct kthread_work *work)
@@ -798,6 +906,7 @@ static void ufcs_event_work(struct kthread_work *work)
 	struct ufcs_event *event;
 	struct ufcs_msg *msg;
 	struct ufcs_config *config;
+	int rc;
 
 	config = &class->config;
 	msg = class->recv_msg;
@@ -833,7 +942,7 @@ static void ufcs_event_work(struct kthread_work *work)
 		break;
 	default:
 		ufcs_err("not support msg type, type=%d\n", msg->head.type);
-		ufcs_source_hard_reset(class->ufcs);
+		ufcs_source_hard_reset(class);
 		goto msg_type_err;
 	}
 	if (config->reply_ack)
@@ -847,7 +956,12 @@ static void ufcs_event_work(struct kthread_work *work)
 	event->msg = msg;
 	event->data = NULL;
 	INIT_LIST_HEAD(&event->list);
-	ufcs_process_event(class, event);
+	rc = ufcs_process_event(class, event);
+	if ((rc < 0) && (rc != -ENOTSUPP)) {
+		devm_kfree(&ufcs->dev, event);
+		ufcs_err("ufcs event processing failed, rc=%d\n", rc);
+		goto event_err;
+	}
 
 	return;
 
@@ -878,6 +992,11 @@ static void ufcs_msg_send_work(struct kthread_work *work)
 		ack_nck_msg = false;
 
 	if (!ack_nck_msg) {
+#if IS_ENABLED(CONFIG_OPLUS_UFCS_CLASS_DEBUG)
+		rc = ufcs_debug_check_nck_info(class, sender->msg);
+		if (rc > 0)
+			sender->status = MSG_NCK;
+#endif
 		switch (sender->status) {
 		case MSG_ACK_TIMEOUT:
 		case MSG_NCK:
@@ -913,7 +1032,7 @@ static void ufcs_msg_send_work(struct kthread_work *work)
 
 	if (ufcs_dump_msg_info(sender->msg, "send") < 0)
 		return;
-	rc = __ufcs_send_msg(class, sender->msg);
+	rc = ufcs_write_msg(class, sender->msg);
 	if (rc < 0) {
 		ufcs_err("send msg error\n");
 		sender->status = MSG_SEND_FAIL;
@@ -955,6 +1074,7 @@ int ufcs_event_init(struct ufcs_class *class)
 	kthread_init_work(&class->event_work, ufcs_event_work);
 	kthread_init_work(&class->msg_send_work, ufcs_msg_send_work);
 	kthread_init_work(&class->recv_work, ufcs_recv_work);
+	INIT_WORK(&class->fifo_overflow_work, ufcs_fifo_overflow_work);
 	class->recv_msg = NULL;
 
 	spin_lock_init(&class->event.event_list_lock);
@@ -1032,6 +1152,9 @@ void ufcs_free_all_event(struct ufcs_class *class)
 struct ufcs_event *ufcs_get_next_event(struct ufcs_class *class)
 {
 	struct ufcs_event *event;
+#if IS_ENABLED(CONFIG_OPLUS_UFCS_CLASS_DEBUG)
+	int rc;
+#endif
 
 	if (class == NULL) {
 		ufcs_err("class is NULL");
@@ -1058,5 +1181,24 @@ recheck:
 
 	ufcs_debug("get %s event\n", ufcs_get_event_name(event));
 
-	return event;
+#if IS_ENABLED(CONFIG_OPLUS_UFCS_CLASS_DEBUG)
+	/* check debug refuse info */
+	rc = ufcs_debug_check_refuse_info(class, event->msg);
+	if (rc > 0) {
+		ufcs_free_event(class, &event);
+		goto recheck;
+	}
+#endif
+
+	if (event->type != UFCS_EVENT_SEND_REFUSE)
+		return event;
+
+	/* Handle refuse message */
+	if (event->msg == NULL) {
+		ufcs_debug("the message of refuse event is empty\n");
+		goto recheck;
+	}
+	ufcs_handle_unsupported_msg(class, event->msg);
+	ufcs_free_event(class, &event);
+	goto recheck;
 }

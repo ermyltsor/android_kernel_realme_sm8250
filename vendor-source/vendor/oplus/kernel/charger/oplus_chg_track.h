@@ -5,10 +5,12 @@
 #include <linux/of.h>
 #include <linux/debugfs.h>
 
-#define OPLUS_CHG_TRACK_CURX_INFO_LEN		(1024 + 512 + 256)
+#define OPLUS_CHG_TRACK_CURX_INFO_LEN		(1024 + 512 + 256 + 160 + 64)
 #define ADSP_TRACK_CURX_INFO_LEN		500
 #define ADSP_TRACK_PROPERTY_DATA_SIZE_MAX	512
 #define ADSP_TRACK_FIFO_NUMS			6
+#define GAUGE_INFO_TRACK_FIFO_NUMS		4
+#define GAUGE_INFO_TRACK_FIFO_ONE_SIZE		512
 #define OPLUS_CHG_TRACK_POWER_INFO_LEN		256
 
 #define OPLUS_CHG_TRACK_DEVICE_ERR_NAME_LEN	32
@@ -126,10 +128,25 @@ enum oplus_chg_track_mos_device_error {
 
 #define OPLUS_CHG_TRACK_SCENE_GAGUE_SEAL_ERR	"seal_err"
 #define OPLUS_CHG_TRACK_SCENE_GAGUE_UNSEAL_ERR	"unseal_err"
+#define OPLUS_CHG_TRACK_SCENE_GAGUE_DEFAULT	"default"
+#define OPLUS_CHG_TRACK_SCENE_GAGUE_SOC_1_PCT	"soc_smooth_to_1"
+#define OPLUS_CHG_TRACK_SCENE_GAUGE_BQFS_ERR "bqfs_err"
 enum oplus_chg_track_gague_device_error {
 	TRACK_GAGUE_ERR_DEFAULT,
 	TRACK_GAGUE_ERR_SEAL,
 	TRACK_GAGUE_ERR_UNSEAL,
+	TRACK_GAGUE_GENERAL_INFO,
+	TRACK_GAGUE_ERR_RSOC_JUMP,
+	TRACK_GAGUE_ERR_VOLT_SOC_NOT_MATCH,
+	TRACK_GAGUE_ERR_QMAX,
+	TRACK_GAGUE_ERR_FCC,
+	TRACK_GAGUE_ERR_RSOC_SMOOTH,
+	TRACK_GAGUE_ERR_TEMP,
+	TRACK_GAGUE_ERR_SOH_JUMP,
+	TRACK_GAGUE_ERR_CC_JUMP,
+	TRACK_GAGUE_SOC_1_PCT_INFO,
+
+	TRACK_GAGUE_ERR_MAX,
 };
 
 #define OPLUS_CHG_TRACK_SCENE_UFCS_ERR "doubleMOSufcs_err"
@@ -192,6 +209,11 @@ enum oplus_chg_track_pps_device_error {
 	TRACK_PPS_ERR_IOUT_MIN,
 	TRACK_PPS_ERR_PPS_STATUS,
 	TRACK_PPS_ERR_QUIRKS_COUNT,
+	TRACK_PPS_ERR_CP_PROTECT,
+	TRACK_PPS_ERR_IBAT_OVER,
+	TRACK_PPS_ERR_REQUEST_VOLT_OVER,
+	TRACK_PPS_ERR_SEND_HARDRESET,
+	TRACK_PPS_ERR_RECV_HARDRESET,
 };
 
 #define OPLUS_CHG_TRACK_SCENE_COOLDOWN_ERR	"cooldown_err"
@@ -264,7 +286,10 @@ enum oplus_chg_track_info_flag {
 	TRACK_NOTIFY_FLAG_CHG_CYCLE_INFO,
 	TRACK_NOTIFY_FLAG_TTF_INFO,
 	TRACK_NOTIFY_FLAG_UISOH_INFO,
-	TRACK_NOTIFY_FLAG_GENERAL_RECORD_LAST = TRACK_NOTIFY_FLAG_UISOH_INFO,
+	TRACK_NOTIFY_FLAG_GAUGE_INFO,
+	TRACK_NOTIFY_FLAG_GAUGE_MODE,
+	TRACK_NOTIFY_FLAG_ANTI_EXPANSION_INFO,
+	TRACK_NOTIFY_FLAG_GENERAL_RECORD_LAST = TRACK_NOTIFY_FLAG_ANTI_EXPANSION_INFO,
 
 	TRACK_NOTIFY_FLAG_NO_CHARGING_FIRST,
 	TRACK_NOTIFY_FLAG_NO_CHARGING = TRACK_NOTIFY_FLAG_NO_CHARGING_FIRST,
@@ -303,7 +328,8 @@ enum oplus_chg_track_info_flag {
 	TRACK_NOTIFY_FLAG_HK_ABNORMAL,
 	TRACK_NOTIFY_FLAG_UFCS_IC_ABNORMAL,
 	TRACK_NOTIFY_FLAG_ADAPTER_ABNORMAL,
-	TRACK_NOTIFY_FLAG_DEVICE_ABNORMAL_LAST = TRACK_NOTIFY_FLAG_ADAPTER_ABNORMAL,
+	TRACK_NOTIFY_FLAG_NTC_ABNORMAL,
+	TRACK_NOTIFY_FLAG_DEVICE_ABNORMAL_LAST = TRACK_NOTIFY_FLAG_NTC_ABNORMAL,
 
 	TRACK_NOTIFY_FLAG_SOFTWARE_ABNORMAL_FIRST,
 	TRACK_NOTIFY_FLAG_UFCS_ABNORMAL = TRACK_NOTIFY_FLAG_SOFTWARE_ABNORMAL_FIRST,
@@ -392,6 +418,8 @@ typedef struct {
 	u8 adsp_crux_info[ADSP_TRACK_CURX_INFO_LEN];
 } __attribute__((packed)) adsp_track_trigger;
 
+
+
 int oplus_chg_track_handle_adsp_info(u8 *crux_info, int len);
 int oplus_chg_track_upload_trigger_data(oplus_chg_track_trigger data);
 int oplus_chg_track_comm_monitor(void);
@@ -427,4 +455,6 @@ int oplus_chg_track_get_hk_err_reason(int err_type, char *err_reason, int len);
 int oplus_chg_track_set_app_info(const char *buf);
 int oplus_chg_olc_config_set(const char *buf);
 int oplus_chg_olc_config_get(char *buf);
+int oplus_track_upload_ntc_abnormal_info(int ntc_temp, char *ntc_name,
+						   char *scene, char *reason, char *other);
 #endif

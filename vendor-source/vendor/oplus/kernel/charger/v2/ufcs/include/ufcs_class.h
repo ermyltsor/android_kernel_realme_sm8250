@@ -8,6 +8,7 @@
 
 #include <linux/kernel.h>
 #include <linux/device.h>
+#include <linux/kfifo.h>
 
 struct ufcs_class;
 
@@ -79,6 +80,8 @@ struct ufcs_config {
 
 struct ufcs_dev_ops;
 
+#define UFCS_ERR_FLAG_BUF_LEN	5
+#define UFCS_ERR_FLAG_BUF_SIZE	(UFCS_ERR_FLAG_BUF_LEN * sizeof(unsigned int))
 struct ufcs_dev {
 	struct device dev;
 	struct ufcs_dev_ops *ops;
@@ -86,7 +89,8 @@ struct ufcs_dev {
 	struct ufcs_class *class;
 
 	enum ufcs_handshake_state handshake_state;
-	unsigned int dev_err_flag;
+	struct kfifo err_flag_fifo;
+	unsigned int err_flag_save;
 };
 
 struct ufcs_dev_ops {
@@ -99,6 +103,7 @@ struct ufcs_dev_ops {
 	int (*set_baud_rate)(struct ufcs_dev *ufcs, enum ufcs_baud_rate baud);
 	int (*enable)(struct ufcs_dev *ufcs);
 	int (*disable)(struct ufcs_dev *ufcs);
+	int (*watchdog_config)(struct ufcs_dev *ufcs, unsigned int time_ms);
 };
 
 #if IS_ENABLED(CONFIG_OPLUS_UFCS_CLASS)
@@ -111,11 +116,14 @@ struct ufcs_dev *ufcs_get_ufcs_device(void);
 int ufcs_msg_handler(struct ufcs_dev *ufcs);
 int ufcs_intf_pdo_set(struct ufcs_dev *ufcs, int vol_mv, int curr_ma);
 int ufcs_handshake(struct ufcs_dev *ufcs);
-int ufcs_source_hard_reset(struct ufcs_dev *ufcs);
-int ufcs_cable_hard_reset(struct ufcs_dev *ufcs);
+int ufcs_intf_source_hard_reset(struct ufcs_dev *ufcs);
+int ufcs_intf_cable_hard_reset(struct ufcs_dev *ufcs);
 int ufcs_force_exit(struct ufcs_dev *ufcs);
 int ufcs_intf_config_watchdog(struct ufcs_dev *ufcs, u16 time_ms);
 void ufcs_clr_error_flag(struct ufcs_dev *ufcs);
+int ufcs_set_error_flag(struct ufcs_dev *ufcs, unsigned int err_flag);
+int ufcs_get_error_flag(struct ufcs_dev *ufcs, unsigned int *err_flag);
+int ufcs_check_error_flag_all(struct ufcs_dev *ufcs, unsigned int *err_flag);
 int ufcs_intf_get_device_info(struct ufcs_dev *ufcs, u64 *dev_info);
 int ufcs_intf_get_error_info(struct ufcs_dev *ufcs, u64 *err_info);
 int ufcs_intf_get_source_info(struct ufcs_dev *ufcs, u64 *src_info);
@@ -127,6 +135,7 @@ int ufcs_intf_get_emark_info(struct ufcs_dev *ufcs, u64 *info);
 int ufcs_intf_get_power_info_ext(struct ufcs_dev *ufcs, u64 *pie, int num);
 bool ufcs_is_test_mode(struct ufcs_dev *ufcs);
 bool ufcs_is_vol_acc_test_mode(struct ufcs_dev *ufcs);
+bool ufcs_handshake_success(struct ufcs_dev *ufcs);
 
 #else /* CONFIG_OPLUS_UFCS_CLASS */
 
@@ -169,13 +178,13 @@ static inline int ufcs_handshake(struct ufcs_dev *ufcs)
 }
 
 __maybe_unused
-static inline int ufcs_source_hard_reset(struct ufcs_dev *ufcs)
+static inline int ufcs_intf_source_hard_reset(struct ufcs_dev *ufcs)
 {
 	return -EINVAL;
 }
 
 __maybe_unused
-static inline int ufcs_cable_hard_reset(struct ufcs_dev *ufcs)
+static inline int ufcs_intf_cable_hard_reset(struct ufcs_dev *ufcs)
 {
 	return -EINVAL;
 }
@@ -196,6 +205,24 @@ __maybe_unused
 static inline void ufcs_clr_error_flag(struct ufcs_dev *ufcs)
 {
 	return;
+}
+
+__maybe_unused
+static inline int ufcs_set_error_flag(struct ufcs_dev *ufcs, unsigned int err_flag)
+{
+	return -EINVAL;
+}
+
+__maybe_unused
+static inline int ufcs_get_error_flag(struct ufcs_dev *ufcs, unsigned int *err_flag)
+{
+	return -EINVAL;
+}
+
+__maybe_unused
+static inline int ufcs_check_error_flag_all(struct ufcs_dev *ufcs, unsigned int *err_flag)
+{
+	return -EINVAL;
 }
 
 __maybe_unused
@@ -260,6 +287,12 @@ static inline bool ufcs_is_test_mode(struct ufcs_dev *ufcs)
 
 __maybe_unused
 static inline bool ufcs_is_vol_acc_test_mode(struct ufcs_dev *ufcs)
+{
+	return false;
+}
+
+__maybe_unused
+static inline bool ufcs_handshake_success(struct ufcs_dev *ufcs)
 {
 	return false;
 }
