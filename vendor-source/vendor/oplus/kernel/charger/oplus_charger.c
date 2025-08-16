@@ -16344,7 +16344,7 @@ int oplus_get_adapter_power(void)
 	int fast_chg_type = 0;
 	struct oplus_chg_chip *chip = g_charger_chip;
 
-	wls_online = oplus_wpc_get_online_status() || oplus_chg_is_wls_present();
+	//wls_online = oplus_wpc_get_online_status() || oplus_chg_is_wls_present();
 
 	if ((oplus_vooc_get_fastchg_started() == true) ||
 		(oplus_vooc_get_fastchg_to_normal() == true) ||
