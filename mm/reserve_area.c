@@ -1,1 +1,1 @@
-../../../vendor/oplus/kernel/oplus_performance/gloom_new/reserve_area.c
+../vendor-source/vendor/oplus/kernel/oplus_performance/gloom_new/reserve_area.c
