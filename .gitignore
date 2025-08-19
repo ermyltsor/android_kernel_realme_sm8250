@@ -138,3 +138,6 @@ kernel/configs/android-*.cfg
 
 # Ignore out directort
 /out/
+
+# Ignore custom clang-tools
+/clang-tools/
