@@ -136,3 +136,5 @@ all.config
 # fetched Android config fragments
 kernel/configs/android-*.cfg
 
+# Ignore out directort
+/out/
