@@ -45,7 +45,7 @@ static u32 dither_depth_map[DITHER_DEPTH_MAP_INDEX] = {
 
 #ifdef OPLUS_BUG_STABILITY
 extern int oplus_dither_enable;
-extern int dc_apollo_enable;
+int dc_apollo_enable = 0;
 #endif
 
 static struct sde_merge_3d_cfg *_merge_3d_offset(enum sde_merge_3d idx,
