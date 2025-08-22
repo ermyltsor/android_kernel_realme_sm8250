@@ -76,9 +76,11 @@ echo "Enter the anykernel directory after 5 seconds."
 sleep 5
 cd anykernel
 
-if [ -f ../out/arch/arm64/boot/Image ]; then
-    echo "Copy Image from output to the anykernel folder."
+if [ -f ../out/arch/arm64/boot/Image ] && [ -f ../out/arch/arm64/boot/dtb ] && [ -f ../out/arch/arm64/boot/dtbo.img ]; then
+    echo "Copy Image, dtb, dtbo.img from output to the anykernel folder."
     cp ../out/arch/arm64/boot/Image .
+    cp ../out/arch/arm64/boot/dtb .
+    cp ../out/arch/arm64/boot/dtbo.img .
 
     echo "Compress everything in the anykernel folder into a zip file."
     zip -qr "$ANYKERNEL_NAME.zip" *
@@ -88,9 +90,9 @@ if [ -f ../out/arch/arm64/boot/Image ]; then
 
    sleep 2
 
-    if [ -f anykernel/Image ]; then
-        echo "Delete Image from the anykernel folder."
-        rm anykernel/Image
+    if [ -f anykernel/Image ] && [ -f anykernel/dtb ] && [ -f anykernel/dtbo.img ]; then
+        echo "Delete Image, dtb, and dtbo.img from the anykernel folder."
+        rm anykernel/Image anykernel/dtb anykernel/dtbo.img
     fi
 
     echo "You can find the $ANYKERNEL_NAME.zip in anykernel folder."
