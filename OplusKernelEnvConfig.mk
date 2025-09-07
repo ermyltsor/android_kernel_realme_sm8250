@@ -123,12 +123,10 @@ OPLUS_FEATURE_MIC_VA_MIC_CLK_SWITCH
 
 # CaiHuiyue@MULTIMEDIA, 2020/9/24, Add for ADFR feature
 ifeq ($(OPLUS_FEATURE_ADFR_KERNEL), yes)
-    $(warning add OPLUS_FEATURE_ADFR in kernel)
     ALLOWED_MCROS += OPLUS_FEATURE_ADFR
 endif
 
 $(foreach myfeature,$(ALLOWED_MCROS),\
-         $(warning make $(myfeature) to be a macro here) \
          $(eval KBUILD_CFLAGS += -D$(myfeature)) \
          $(eval KBUILD_CPPFLAGS += -D$(myfeature)) \
          $(eval CFLAGS_KERNEL += -D$(myfeature)) \
