@@ -15,11 +15,6 @@ obj-$(CONFIG_OPLUS_FEATURE_MIDAS)    += midas/
 obj-$(CONFIG_SVELTE) +=  svelte/
 #endif /* OPLUS_FEATURE_MEMLEAK_DETECT */
 
-#ifdef OPLUS_FEATURE_SENSOR_DRIVER
-#tangjh@PSW.BSP.sensor, 2020/09/12, add for sensor feedback
-obj-y += oplus_sensor_feedback/
-#endif
-
 #ifdef OPLUS_FEATURE_THERMAL_HORAE
 #shuze.ma@BSP.Power.Thermal 2020/08/17, Add for thermal
 obj-$(CONFIG_HORAE_THERMAL_SHELL) += thermal/

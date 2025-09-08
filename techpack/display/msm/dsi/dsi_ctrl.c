@@ -22,10 +22,6 @@
 #include "dsi_panel.h"
 
 #include "sde_dbg.h"
-#ifdef OPLUS_BUG_STABILITY
-/*Mark.Yao@PSW.MM.Display.LCD.Log,2020-03-05 add keylog */
-#include <soc/oplus/system/oplus_mm_kevent_fb.h>
-#endif /* OPLUS_BUG_STABILITY */
 #if defined(OPLUS_FEATURE_PXLW_IRIS5)
 // Pixelworks@MULTIMEDIA.DISPLAY, 2020/07/09, Iris5 Feature
 #include "../../iris/dsi_iris5_api.h"
@@ -53,12 +49,10 @@
 #ifdef OPLUS_BUG_STABILITY
 /*Mark.Yao@PSW.MM.Display.LCD.Log,2020-05-14 add for mm keyevent */
 #undef DSI_CTRL_ERR
-#include <soc/oplus/system/oplus_mm_kevent_fb.h>
 #define DSI_CTRL_ERR(c, fmt, ...) \
 	do { \
 		DRM_DEV_ERROR(NULL, "[msm-dsi-error]: %s: "\
 				fmt, c ? c->name : "inv", ##__VA_ARGS__); \
-		mm_fb_display_kevent_named(MM_FB_KEY_RATELIMIT_1H, fmt, ##__VA_ARGS__); \
 	} while(0)
 #endif /* OPLUS_BUG_STABILITY */
 
@@ -373,10 +367,7 @@ static void dsi_ctrl_dma_cmd_wait_for_done(struct work_struct *work)
 							dsi_ctrl->irq_info.irq_stat_refcount[DSI_SINT_CMD_MODE_DMA_DONE]);
 				dsi_ctrl_disable_status_interrupt(dsi_ctrl,
 						DSI_SINT_CMD_MODE_DMA_DONE);
-
-				mm_fb_display_kevent("dma_tx irq trigger fixup", MM_FB_KEY_RATELIMIT_NONE, "irq status=%x", status);
 			}
-			mm_fb_display_kevent("dma_tx irq trigger err", MM_FB_KEY_RATELIMIT_1H, "irq status=%x", status);
 #endif
 		} else {
 			DSI_CTRL_ERR(dsi_ctrl,

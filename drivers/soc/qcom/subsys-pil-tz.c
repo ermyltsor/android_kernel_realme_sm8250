@@ -29,10 +29,6 @@
 #endif
 
 #include "peripheral-loader.h"
-//#ifdef OPLUS_FEATURE_SENSOR
-//tangjh@PSW.BSP.SENSOR ,2020/07/27 add for slpi/adsp crash reason
-#include <soc/oplus/system/kernel_fb.h>
-//#endif
 
 #define XO_FREQ			19200000
 #define PROXY_TIMEOUT_MS	10000
@@ -838,10 +834,6 @@ static struct pil_reset_ops pil_ops_trusted = {
 	.proxy_unvote = pil_remove_proxy_vote,
 	.deinit_image = pil_deinit_image_trusted,
 };
-//#ifdef OPLUS_FEATURE_SENSOR
-//tangjh@PSW.BSP.SENSOR ,2020/07/27 add for slpi/adsp crash reason
-extern void set_subsys_crash_cause(char *reason);
-//#endif
 
 #ifdef OPLUS_FEATURE_MODEM_MINIDUMP
 //Wentiam.Mai@PSW.NW.EM.1248599, 2018/01/25
@@ -884,13 +876,6 @@ static void log_failure_reason(const struct pil_tz_data *d)
 	save_dump_reason_to_smem(reason, function_name);
 	#endif /*CONFIG_OPLUS_FEATURE_DUMP_REASON*/
 
-	//#ifdef OPLUS_FEATURE_SENSOR
-	//tangjh@PSW.BSP.SENSOR ,2020/07/27 add for slpi/adsp crash reason
-	set_subsys_crash_cause(reason);
-	if(strncmp(name, "slpi", strlen("slpi")) == 0){
-		oplus_kevent_fb_str(FB_SENSOR, FB_SENSOR_ID_CRASH, reason);
-	}
-	//#endif
 	pr_err("%s subsystem failure reason: %s.\n", name, reason);
 
     #ifdef OPLUS_FEATURE_MODEM_MINIDUMP
