@@ -11,6 +11,14 @@ if [ -d out ]; then
     rm -rf out
 fi
 
+ANYKERNEL_NAME=rui2.0-stock
+
+# Clean up the last anykernel zip package
+if find anykernel -maxdepth 1 -type f -name "$ANYKERNEL_NAME.zip" | grep -q .; then
+    echo "Delete the $ANYKERNEL_NAME.zip"
+    find anykernel -maxdepth 1 -type f -name "$ANYKERNEL_NAME.zip" -delete
+fi
+
 export ARCH=arm64
 
 # Catch the Google clang tools we needed
@@ -57,5 +65,34 @@ make $MAKE_FLAGS $KERNEL_DEFCONFIG
 make $MAKE_FLAGS -j$(nproc)
 
 echo "Build Complete."
+echo
+
+echo "Now enter the anykernel directory."
+cd anykernel
+
+if [ -f ../out/arch/arm64/boot/Image ] && [ -f ../out/arch/arm64/boot/dtb ] && [ -f ../out/arch/arm64/boot/dtbo.img ]; then
+    echo "Copy Image, dtb, dtbo.img from output to the anykernel folder."
+    cp ../out/arch/arm64/boot/Image .
+    cp ../out/arch/arm64/boot/dtb .
+    cp ../out/arch/arm64/boot/dtbo.img .
+
+    echo "Compress everything in the anykernel folder into a zip file."
+    zip -qr "$ANYKERNEL_NAME.zip" *
+
+    echo "Return to the root directory of the kernel tree."
+    cd ..
+
+   sleep 2
+
+    if [ -f anykernel/Image ] && [ -f anykernel/dtb ] && [ -f anykernel/dtbo.img ]; then
+        echo "Delete Image, dtb, and dtbo.img from the anykernel folder."
+        rm anykernel/Image anykernel/dtb anykernel/dtbo.img
+    fi
+
+    echo "You can find the $ANYKERNEL_NAME.zip in anykernel folder."
+else
+    exit 1
+fi
+
 echo
 echo "The kernel build for realme GT Exp. Master Edition(RMX3366) and realme GT Neo2(RMX3370), base on Android 11 with realme UI 2.0"
