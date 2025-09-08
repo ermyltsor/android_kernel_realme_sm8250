@@ -1,10 +1,5 @@
 obj-$(CONFIG_OPLUS_COMMON_SOFT)  +=  device_info/
 
-#ifdef OPLUS_FEATURE_LOWMEM_DBG
-#Add for dump mem when shrink
-obj-$(CONFIG_OPLUS_FEATURE_LOWMEM_DBG)	+=  lowmem_dbg/
-#endif /* OPLUS_FEATURE_LOWMEM_DBG */
-
 #ifdef VENDOR_EDIT
 #fangxiang@BSP.Power.Basic, 2020/06/30, add for MIDAS
 obj-$(CONFIG_OPLUS_FEATURE_MIDAS)    += midas/
