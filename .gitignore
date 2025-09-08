@@ -1,2 +1,6 @@
 # ignore output directory
 /out/
+
+# ignore custom build tools
+/clang-r383902/
+/gcc64-tools/ 
