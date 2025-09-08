@@ -37,7 +37,6 @@ config OPLUS_BUG_STABILITY_EFFECTON_QGKI
 	define this config to fix stability bug only effect on qgki
 
 
-source "drivers/soc/oplus/system/uboot_log/Kconfig"
 source "drivers/soc/oplus/system/shutdown_detect/Kconfig"
 source "drivers/soc/oplus/system/slabtrace/Kconfig"
 source "drivers/soc/oplus/system/oplus_project/Kconfig"
