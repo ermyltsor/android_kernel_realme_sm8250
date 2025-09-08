@@ -4,3 +4,6 @@
 # ignore custom build tools
 /clang-r383902/
 /gcc64-tools/ 
+
+# ignore anykernel zip package
+/anykernel/*.zip
