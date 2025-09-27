@@ -1,45 +1,48 @@
-# Kernel OpenSource for realme devices with Snapdragon 865/870
+# Kernel Open Source for realme Snapdragon 865/870 Devices
 
 # Branch Notes
 
-- rui2.0, work on Android 11 with realme UI 2.0, origin-url:
- 
-      https://github.com/realme-kernel-opensource/realmeGT-Neo2_AndroidR-kernel-source
+## rui2.0 — Based on Android 11 / realme UI 2.0
 
-    The specific kernel for these devices:
+Origin URL: https://github.com/realme-kernel-opensource/realmeGT-Neo2_AndroidR-kernel-source
 
-    `realme GT Exp. Master Edition(RMX3366) 汉名：真我GT 大师探索版`
+Supported devices:
 
-    `realme GT Neo2(RMX3370)` 
+`realme GT Exp. Master Edition(RMX3366) — 真我GT 大师探索版`
 
-     Other devices are not supported!!!
+`realme GT Neo2(RMX3370)` 
 
-- rui3.0, work on Android 12 with realme UI 3.0, origin-url:
 
-      https://github.com/realme-kernel-opensource/realme_Q5pro_GT-Neo-3T-AndroidS-kernel-source
+## rui3.0 — Based on Android 12 / realme UI 3.0
 
-- rui4.0, work on Android 13 with realme UI 4.0, origin-url: 
+Origin URL: 
+https://github.com/realme-kernel-opensource/realme_Q5pro_GT-Neo-3T-AndroidS-kernel-source
 
-      https://github.com/realme-kernel-opensource/realme_GTneo2-Q5pro-GTMasterExploratory-AndroidT-kernel-source
 
-- rui5.0, work on Android 14 with realme UI 5.0, origin-url: 
+## rui4.0 — Based on Android 13 / realme UI 4.0
 
-      https://github.com/realme-kernel-opensource/realme_gt_master_exploratory_realme_Q5_Pro_GT-Neo3T-AndroidU-kernel-source
+Origin URL: 
+https://github.com/realme-kernel-opensource/realme_GTneo2-Q5pro-GTMasterExploratory-AndroidT-kernel-source
 
-    But only these devices have the official Android 14 version:
 
-    `realme GT Exp. Master Edition(model:RMX3366, device:RE546F, prjname:21615) Only Chinese Variant`
+## rui5.0 — Based on Android 14 / realme UI 5.0
 
-    `realme Q5 Pro(model:RMX3372, device:RE5477, prjname:21623) Chinese Variant`
+Origin URL: 
+https://github.com/realme-kernel-opensource/realme_gt_master_exploratory_realme_Q5_Pro_GT-Neo3T-AndroidU-kernel-source
 
-    `realme GT Neo3T(model:RMX3371, device: RE54E4L1, prjname:21732) Indian Variant`
+## Official Android 14 Support
 
-    `realme GT Neo3T(model:RMX3371, device: RE54E4L1, prjname:21733) Global Variant`
+| Device Name                  | Model   | Device    | prjname | Region          |
+|------------------------------|---------|-----------|---------|-----------------|
+| realme GT Exp. Master Edition| RMX3366 | RE546F    | 21615   | CN              |
+| realme Q5 Pro                | RMX3372 | RE5477    | 21623   | CN              |
+| realme GT Neo3T              | RMX3371 | RE54E4L1  | 21732   | IN              |
+| realme GT Neo3T              | RMX3371 | RE54E4L1  | 21733   | EU              |
 
 
 # How to build it?
 
-Oh, I already upload a build script to help us.
+I uploaded a build script to help us.
 
 Well, when the clone finished, enter the kernel directory, and then input this in your terminal.
 
